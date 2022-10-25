@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block page_content %}
+
+<main class="container center">
+    <h1>Фильтр Блума</h1>
+
+    <form action="/" method="post">
+        <div class="form_row">
+            <input class="form-control" name="search_word_key" required/>
+        </div>
+
+        <button class="btn btn-dark col-1">Поиск</button>
+    </form>
+</main>
+
+{% endblock %}

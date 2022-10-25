@@ -19,6 +19,7 @@ templates = Jinja2Templates(directory="templates/")
 def group_by_min_max_mean(dataframe, min, max, rangemm, column, groupedByColumn):
     return dataframe.groupby(pd.cut(dataframe[column], np.arange(min, max + rangemm, rangemm)))[groupedByColumn].agg(['min', 'max', 'mean'])
 
+
 @router.post("/parse", response_class=HTMLResponse)
 def parse(
         request: Request, file: UploadFile = File(...),
@@ -28,7 +29,7 @@ def parse(
 ):
     try:
         matplotlib.use('TkAgg')
-        dataframe = pd.read_csv(file.file)
+        dataframe = pd.read_csv("csv/Stores.csv", sep=",")
         filtered_data = dataframe.iloc[row_start:row_end + 1, column_start:column_end + 1]
         dataframe2 = pd.DataFrame(filtered_data)
 
