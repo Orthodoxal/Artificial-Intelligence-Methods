@@ -74,9 +74,11 @@ def result(request: Request, search_word_key: str = Form(...)):
         for i in range(len(key_word_array)):
             bloom_filter.add_to_filter(key_word_array[i])
 
+        file_path = "csv/Stores.csv"
+
         if not bloom_filter.check_is_not_in_filter(search_word_key.lower()):
             if search_word_key.lower() in description.lower():
-                return templates.TemplateResponse('main.html', context={'request': request})
+                return templates.TemplateResponse('main.html', context={'request': request, 'file_path': file_path})
             else:
                 return templates.TemplateResponse('error.html', context={'request': request})
         else:

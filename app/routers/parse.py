@@ -23,13 +23,14 @@ def group_by_min_max_mean(dataframe, min, max, rangemm, column, groupedByColumn)
 @router.post("/parse", response_class=HTMLResponse)
 def parse(
         request: Request,
+        file_path: str = Form(...),
         row_start: int = Form(...), row_end: int = Form(...),
         column_start: int = Form(...), column_end: int = Form(...),
         amount_group: int = Form(...)
 ):
     try:
         matplotlib.use('TkAgg')
-        dataframe = pd.read_csv("csv/Stores.csv", sep=",")
+        dataframe = pd.read_csv(file_path, sep=",")
         filtered_data = dataframe.iloc[row_start:row_end + 1, column_start:column_end + 1]
         dataframe2 = pd.DataFrame(filtered_data)
 
@@ -147,7 +148,7 @@ def parse(
     return templates.TemplateResponse('csv.html',
                                       context={
                                           'request': request,
-                                          'filename': 'Stores.csv',
+                                          'filename': file_path,
                                           'row_start': row_start,
                                           'row_end': row_end,
                                           'col_start': column_start,
