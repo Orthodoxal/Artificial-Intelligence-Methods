@@ -22,7 +22,7 @@ def group_by_min_max_mean(dataframe, min, max, rangemm, column, groupedByColumn)
 
 @router.post("/parse", response_class=HTMLResponse)
 def parse(
-        request: Request, file: UploadFile = File(...),
+        request: Request,
         row_start: int = Form(...), row_end: int = Form(...),
         column_start: int = Form(...), column_end: int = Form(...),
         amount_group: int = Form(...)
@@ -144,12 +144,10 @@ def parse(
             result_info += ("<pre>" + lines + "</pre>\n")
     except Exception:
         return {"message": "There was an error uploading the file"}
-    finally:
-        file.file.close()
     return templates.TemplateResponse('csv.html',
                                       context={
                                           'request': request,
-                                          'filename': file.filename,
+                                          'filename': 'Stores.csv',
                                           'row_start': row_start,
                                           'row_end': row_end,
                                           'col_start': column_start,

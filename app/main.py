@@ -60,13 +60,25 @@ async def home(request: Request):
 def result(request: Request, search_word_key: str = Form(...)):
     try:
         bloom_filter = BloomFilter(200, 100)
-        key_word_array = ["покупатель"]
+        key_word_array = ["покупатель", "компании-супермаркета", "магазинов",
+                          "номер магазина", "площадь магазина", "посетивших магазины",
+                          "продажи", "долларах", "произведенные магазинами", "покупателей"]
+        description = """В наборе данных вы получите данные о различных магазинах компании-супермаркета в соответствии 
+        с их идентификаторами магазинов, которые для простоты были преобразованы в положительные целые числа.
+        ID - Идентификационный номер магазина
+        Store_Area - физическая площадь магазина в ядрах
+        Items_Available - Количество различных предметов, доступных в соответствующем магазине.
+        DailyCustomerCount - количество покупателей, посетивших магазины в среднем за месяц.
+        Store_Sales - Продажи в (долларах США), произведенные магазинами."""
 
         for i in range(len(key_word_array)):
             bloom_filter.add_to_filter(key_word_array[i])
 
-        if not bloom_filter.check_is_not_in_filter(search_word_key):
-            return templates.TemplateResponse('main.html', context={'request': request})
+        if not bloom_filter.check_is_not_in_filter(search_word_key.lower()):
+            if search_word_key.lower() in description.lower():
+                return templates.TemplateResponse('main.html', context={'request': request})
+            else:
+                return templates.TemplateResponse('error.html', context={'request': request})
         else:
             return templates.TemplateResponse('error.html', context={'request': request})
     except Exception:
