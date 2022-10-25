@@ -1,7 +1,10 @@
+import base64
 import math
 import sys
+from io import BytesIO
 
 import matplotlib
+import uvicorn
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -13,44 +16,8 @@ router = APIRouter()
 templates = Jinja2Templates(directory="templates/")
 
 
-def add_range(filtered_data, rows, rangex, list, column):
-    start = 0
-    end = rangex - 1
-    index = 0
-    while end < rows:
-        if end + rangex >= rows:
-            while end < rows - 1:
-                end += 1
-        list[index].insert(0, f'{filtered_data.values[start][column]}-{filtered_data.values[end][column]}')
-        start += rangex
-        end += rangex
-        index += 1
-    return list
-
-
-def grouped_list_by_column(filtered_data, rows, amount_groups, column, column_sorted):
-    rangex = int(rows / amount_groups)
-    list = [[0] * 3 for _ in range(amount_groups)]
-    for group in list:
-        group[0] = sys.maxsize
-        group[1] = -1
-
-    for rowX in range(rows):
-        ind_group = int(rowX / rangex)
-        if ind_group > len(list) - 1:
-            ind_group = ind_group - 1
-        group = list[ind_group]
-        if group[0] > filtered_data.values[rowX][column]:
-            group[0] = filtered_data.values[rowX][column]
-        elif group[1] < filtered_data.values[rowX][column]:
-            group[1] = filtered_data.values[rowX][column]
-        group[2] += filtered_data.values[rowX][column]
-    for group in range(len(list) - 1):
-        list[group][2] /= rangex
-    list[len(list) - 1][2] /= (rangex + len(list) % rangex - 1)
-    list = add_range(filtered_data, rows, rangex, list, column_sorted)
-    return list
-
+def group_by_min_max_mean(dataframe, min, max, rangemm, column, groupedByColumn):
+    return dataframe.groupby(pd.cut(dataframe[column], np.arange(min, max + rangemm, rangemm)))[groupedByColumn].agg(['min', 'max', 'mean'])
 
 @router.post("/parse", response_class=HTMLResponse)
 def parse(
@@ -60,6 +27,7 @@ def parse(
         amount_group: int = Form(...)
 ):
     try:
+        matplotlib.use('TkAgg')
         dataframe = pd.read_csv(file.file)
         filtered_data = dataframe.iloc[row_start:row_end + 1, column_start:column_end + 1]
         dataframe2 = pd.DataFrame(filtered_data)
@@ -68,36 +36,27 @@ def parse(
         max = dataframe2['Store_Area'].max()
         range_store_area = (max - min) / amount_group
 
-        sorted_data = dataframe2.sort_values(by='Store_Area')
-
         # lab 2
 
         # 1
         items_available_grouped_by_store_area = \
-            dataframe2.groupby(pd.cut(dataframe2["Store_Area"], np
-                                      .arange(min, max + range_store_area,
-                                              range_store_area)))['Items_Available'].agg(['min', 'max', 'mean'])
+            group_by_min_max_mean(dataframe2, min, max, range_store_area, "Store_Area", 'Items_Available')
 
         # 2
         daily_customer_count_grouped_by_store_area = \
-            dataframe2.groupby(pd.cut(dataframe2["Store_Area"], np
-                                      .arange(min, max + range_store_area,
-                                              range_store_area)))['Daily_Customer_Count'].agg(['min', 'max', 'mean'])
+            group_by_min_max_mean(dataframe2, min, max, range_store_area, "Store_Area", 'Daily_Customer_Count')
 
         # 3
         store_sales_grouped_by_store_area = \
-            dataframe2.groupby(pd.cut(dataframe2["Store_Area"], np
-                                      .arange(min, max + range_store_area,
-                                              range_store_area)))['Store_Sales'].agg(['min', 'max', 'mean'])
+            group_by_min_max_mean(dataframe2, min, max, range_store_area, "Store_Area", 'Store_Sales')
 
         # 4
         min = dataframe2['Daily_Customer_Count'].min()
         max = dataframe2['Daily_Customer_Count'].max()
         range_daily_customer_count = (max - min) / amount_group
         store_sales_grouped_by_daily_customer_count = \
-            dataframe2.groupby(pd.cut(dataframe2["Daily_Customer_Count"], np
-                                      .arange(min, max + range_daily_customer_count,
-                                              range_daily_customer_count)))['Store_Sales'].agg(['min', 'max', 'mean'])
+            group_by_min_max_mean(dataframe2, min, max, range_daily_customer_count,
+                                  "Daily_Customer_Count", 'Store_Sales')
 
         # lab 3
         mean_store_area = dataframe2['Store_Area'].mean()
@@ -120,90 +79,58 @@ def parse(
         min = dataframe2['Store_Area'].min()
         max = dataframe2['Store_Area'].max()
         items_available_grouped_by_store_area2 = \
-            dataframe2.groupby(pd.cut(dataframe2["Store_Area"], np
-                                      .arange(min, max + range_store_area,
-                                              range_store_area)))['Items_Available'].agg(['min', 'max', 'mean'])
+            group_by_min_max_mean(dataframe2, min, max, range_store_area, "Store_Area", 'Items_Available')
 
         # 2
         daily_customer_count_grouped_by_store_area2 = \
-            dataframe2.groupby(pd.cut(dataframe2["Store_Area"], np
-                                      .arange(min, max + range_store_area,
-                                              range_store_area)))['Daily_Customer_Count'].agg(['min', 'max', 'mean'])
+            group_by_min_max_mean(dataframe2, min, max, range_store_area, "Store_Area", 'Daily_Customer_Count')
 
         # 3
         store_sales_grouped_by_store_area2 = \
-            dataframe2.groupby(pd.cut(dataframe2["Store_Area"], np
-                                      .arange(min, max + range_store_area,
-                                              range_store_area)))['Store_Sales'].agg(['min', 'max', 'mean'])
+            group_by_min_max_mean(dataframe2, min, max, range_store_area, "Store_Area", 'Store_Sales')
 
         # 4
         min = dataframe2['Daily_Customer_Count'].min()
         max = dataframe2['Daily_Customer_Count'].max()
         range_daily_customer_count = (max - min) / amount_group
         store_sales_grouped_by_daily_customer_count2 = \
-            dataframe2.groupby(pd.cut(dataframe2["Daily_Customer_Count"], np
-                                      .arange(min, max + range_daily_customer_count,
-                                              range_daily_customer_count)))['Store_Sales'].agg(['min', 'max', 'mean'])
+            group_by_min_max_mean(dataframe2, min, max, range_daily_customer_count,
+                                  "Daily_Customer_Count", 'Store_Sales')
 
-        items_available_grouped_by_store_area.plot()
-        items_available_grouped_by_store_area2.plot()
+        items_available_grouped_by_store_area.plot.bar(rot=0)
+        items_available_grouped_by_store_area2.plot.bar(rot=0)
 
-        daily_customer_count_grouped_by_store_area.plot()
-        daily_customer_count_grouped_by_store_area2.plot()
+        daily_customer_count_grouped_by_store_area.plot.bar(rot=0)
+        daily_customer_count_grouped_by_store_area2.plot.bar(rot=0)
 
-        store_sales_grouped_by_store_area.plot()
-        store_sales_grouped_by_store_area2.plot()
+        store_sales_grouped_by_store_area.plot.bar(rot=0)
+        store_sales_grouped_by_store_area2.plot.bar(rot=0)
 
-        store_sales_grouped_by_daily_customer_count.plot()
-        store_sales_grouped_by_daily_customer_count2.plot()
+        store_sales_grouped_by_daily_customer_count.plot.bar(rot=0)
+        store_sales_grouped_by_daily_customer_count2.plot.bar(rot=0)
 
-        plt.show()
-
-        """
-        # lab 2 extra
-
+        # df4 = dataframe2[(dataframe2["Store_Area"] >= "{}".format(min) & dataframe2["Store_Area"] <= "{}".format(min + range_store_area))]
         min = dataframe2['Store_Area'].min()
         max = dataframe2['Store_Area'].max()
+
         range_store_area = (max - min) / amount_group
-        dataframe2['Result'] = dataframe2["Store_Sales"].div(dataframe2['Daily_Customer_Count'].values)
-        store_sales_for_person_grouped_by_store_area = \
-            dataframe2.groupby(pd.cut(dataframe2["Store_Area"], np
-                                      .arange(min, max + range_store_area,
-                                              range_store_area)))['Result'].agg(['min', 'max', 'mean'])
+        df4 = dataframe2[(dataframe2["Store_Area"] <= min + range_store_area)]['Daily_Customer_Count']
+        df5 = dataframe2[(dataframe2["Store_Area"] > min + range_store_area) & (
+                    dataframe2["Store_Area"] <= min + range_store_area * 2)]['Daily_Customer_Count']
+        df6 = dataframe2[(dataframe2["Store_Area"] > min + range_store_area * 2) & (
+                    dataframe2["Store_Area"] <= min + range_store_area * 3)]['Daily_Customer_Count']
 
-        dataframe3 = pd.DataFrame(daily_customer_count_grouped_by_store_area)
-        dataframe4 = pd.DataFrame(store_sales_grouped_by_store_area)
+        fig = plt.figure()
+        fig.set_size_inches(12, 10)
+        data = [df4, df5, df6]
+        plt.boxplot(data)
 
-        dataframe5 = pd.DataFrame()
-        dataframe5['minD'] = dataframe4["min"].div(dataframe3['min'].values)
-        dataframe5['maxD'] = dataframe4["max"].div(dataframe3['max'].values)
-        dataframe5['meanD'] = dataframe4["mean"].div(dataframe3['mean'].values)
-        """
-
-        """
-        # 1
-        items_available_grouped_by_store_area_list = grouped_list_by_column(sorted_data, row_end + 1, amount_group, 2, 1)
-        items_available_grouped_by_store_area_list.insert(0, ['Диапазон площади', 'Минимум', 'Максимум', 'Среднее'])
-
-        # 2
-        daily_customer_count_grouped_by_store_area_list \
-            = grouped_list_by_column(sorted_data, row_end + 1, amount_group, 3, 1)
-        daily_customer_count_grouped_by_store_area_list.insert(0, ['Диапазон площади', 'Минимум', 'Максимум', 'Среднее'])
-
-        # 3
-        store_sales_grouped_by_store_area_list = grouped_list_by_column(sorted_data, row_end + 1, amount_group, 4, 1)
-        store_sales_grouped_by_store_area_list.insert(0, ['Диапазон площади', 'Минимум', 'Максимум', 'Среднее'])
-
-        # 4
-        sorted_data = dataframe2.sort_values(by='Daily_Customer_Count')
-        store_sales_grouped_by_daily_customer_count_list \
-            = grouped_list_by_column(sorted_data, row_end + 1, amount_group, 4, 3)
-        store_sales_grouped_by_daily_customer_count_list.insert(0, ['Диапазон покупателей', 'Минимум', 'Максимум',
-                                                                    'Среднее'])
-        """
-
-        # min = filtered_data.values[0][2]
-        # min = store_sales_grouped_by_store_area_list
+        fig_list = []
+        for i in plt.get_fignums():
+            tmpfile = BytesIO()
+            plt.figure(i).savefig(tmpfile, format='png')
+            encoded = base64.b64encode(tmpfile.getvalue()).decode('utf-8')
+            fig_list.append('<img src=\'data:image/png;base64,{}\'>'.format(encoded))
 
         result = [filtered_data.columns.values.tolist()]
         for row in filtered_data.values.tolist():
@@ -214,23 +141,10 @@ def parse(
         result_info = ""
         for lines in contents.readlines():
             result_info += ("<pre>" + lines + "</pre>\n")
-
-        """
-        'grouped_items': items_available_grouped_by_store_area_list,
-        'grouped_customers': daily_customer_count_grouped_by_store_area_list,
-        'grouped_sales_by_area': store_sales_grouped_by_store_area_list,
-        'grouped_sales_by_customers': store_sales_grouped_by_daily_customer_count_list,
-        
-        
-        'store_sales_for_person_grouped_by_store_area': store_sales_for_person_grouped_by_store_area.to_html(
-                                              index_names=False, escape=False),
-        'dataframe5': dataframe5.to_html(index_names=False, escape=False),
-        """
     except Exception:
         return {"message": "There was an error uploading the file"}
     finally:
         file.file.close()
-    plt.show()
     return templates.TemplateResponse('csv.html',
                                       context={
                                           'request': request,
@@ -252,4 +166,5 @@ def parse(
                                               index_names=False, escape=False),
                                           'store_sales_grouped_by_daily_customer_count': store_sales_grouped_by_daily_customer_count.to_html(
                                               index_names=False, escape=False),
+                                          'plot': fig_list
                                       })

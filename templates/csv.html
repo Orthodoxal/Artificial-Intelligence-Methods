@@ -46,57 +46,8 @@
     <H3>Минимальный, максимальный, средний объем выручки, сгруппированный по пассажиропотоку.</H3>
     {{store_sales_grouped_by_daily_customer_count|safe}}
 
-    <!--<H3>Минимальный, максимальный, средний объем доступных товаров, сгруппированный по площади магазина.</H3>
-    <div style="overflow: scroll">
-        {% for row in grouped_items %}
-        <div class="row2">
-            {% for column in row %}
-            <div class="col">
-                <p>{{ column }}</p>
-            </div>
-            {% endfor %}
-        </div>
-        {% endfor %}
-    </div>
-
-    <H3>Минимальный, максимальный, средний пассажиропоток, сгруппированный по площади магазина</H3>
-    <div style="overflow: scroll">
-        {% for row in grouped_customers %}
-        <div class="row2">
-            {% for column in row %}
-            <div class="col">
-                <p>{{ column }}</p>
-            </div>
-            {% endfor %}
-        </div>
-        {% endfor %}
-    </div>
-
-    <H3>Минимальный, максимальный, средний объем выручки, сгруппированный по площади магазина.</H3>
-    <div style="overflow: scroll">
-        {% for row in grouped_sales_by_area %}
-        <div class="row2">
-            {% for column in row %}
-            <div class="col">
-                <p>{{ column }}</p>
-            </div>
-            {% endfor %}
-        </div>
-        {% endfor %}
-    </div>
-
-    <H3>Минимальный, максимальный, средний объем выручки, сгруппированный по пассажиропотоку.</H3>
-    <div style="overflow: scroll">
-        {% for row in grouped_sales_by_customers %}
-        <div class="row2">
-            {% for column in row %}
-            <div class="col">
-                <p>{{ column }}</p>
-            </div>
-            {% endfor %}
-        </div>
-        {% endfor %}
-    </div>-->
+    <H3>Графики</H3>
+    {{plot|safe}}
 
     <H3>Информация о данных</H3>
     {{ result_info|safe }}
