@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% set active_page = "twoforms" %}
+
+{% block title %}CSV Parser{% endblock %}
+
+{% block head %}
+{{ super() }}
+{% endblock %}
+
+{% block page_content %}
+<main class="container" role="main">
+    <h1 class="cap">CSV-парсер данных для просмотра и анализа</h1>
+    <form action="/parse" enctype="multipart/form-data" method="post">
+        <div class="row">
+            <p>Введите начальную строку (начало диапазона)</p>
+            <input name="row_start" required type="number" value=""/>
+        </div>
+        <div class="row">
+            <p>Введите конечную строку (конец диапазона)</p>
+            <input name="row_end" required type="number" value=""/>
+        </div>
+        <div class="row">
+            <p>Введите начальный столбец (начало диапазона)</p>
+            <input name="column_start" required type="number" value=""/>
+        </div>
+        <div class="row">
+            <p>Введите конечный столбец (конец диапазона)</p>
+            <input name="column_end" required type="number" value=""/>
+        </div>
+        <div class="row">
+            <p>Введите количество групп (для группировки)</p>
+            <input name="amount_group" required type="number" value=""/>
+        </div>
+        <div class="row">
+            <p>Загрузите CSV-файл</p>
+            <input id="file" name="file" type="file">
+        </div>
+        <div class="row" style="margin-top: 1em">
+            <button>Отобразить</button>
+        </div>
+    </form>
+</main>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+{% endblock %}

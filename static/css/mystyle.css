@@ -1,0 +1,62 @@
+body {
+    min-height: 100vh;
+    position: relative;
+    margin: 0;
+    padding-bottom: 100px;
+    box-sizing: border-box;
+    color: #000;
+}
+
+.wrapper {
+    max-width: 960px;
+}
+
+footer {
+    position: absolute;
+    bottom: 0;
+    height: 100px;
+    padding-top: 50px;
+}
+
+.responsive {
+    max-width: 100%;
+    height: auto;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.table-style {
+    width: 5000px;
+    overflow-x: scroll;
+    overflow-y: hidden;
+    white-space: nowrap;
+}
+
+.row2 {
+    --bs-gutter-x: 1.5rem;
+    --bs-gutter-y: 0;
+    display: flex;
+    flex-wrap: nowrap;
+    margin-top: calc(-1 * var(--bs-gutter-y));
+    margin-right: calc(-.5 * var(--bs-gutter-x));
+    margin-left: calc(-.5 * var(--bs-gutter-x));
+}
+
+.col {
+    text-align: center;
+    max-width: 200px;
+}
+
+/* Стили таблицы (IKSWEB) */
+table.iksweb{text-decoration: none;border-collapse:collapse;width:100%;text-align:center;}
+table.iksweb th{font-weight:normal;font-size:14px; color:#ffffff;background-color:#000000;}
+table.iksweb td{font-size:18px;color:#000000;}
+table.iksweb td,table.iksweb th{padding:10px 5px;line-height:13px;vertical-align: middle;border: 1px solid #000000;}
+table.iksweb tr:hover{background-color:#f9fafb}
+table.iksweb tr:hover td{color:#000000;cursor:default;}
+
+/* Стили таблицы (dataframe) */
+table.dataframe{text-decoration: none;border-collapse:collapse;width:100%;text-align:center;}
+table.dataframe td, th {font-size:18px;color:#000000;}
+table.dataframe tr {text-align: center !important;}
+table.dataframe td, table.dataframe th {padding:10px 5px;line-height:13px;vertical-align: middle;border: 1px solid #000000;}
