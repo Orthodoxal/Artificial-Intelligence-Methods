@@ -30,7 +30,7 @@ def parse(
 ):
     try:
         matplotlib.use('TkAgg')
-        dataframe = pd.read_csv(file_path, sep=",")
+        dataframe = pd.read_csv("csv/" + file_path, sep=",")
         filtered_data = dataframe.iloc[row_start:row_end + 1, column_start:column_end + 1]
         dataframe2 = pd.DataFrame(filtered_data)
 

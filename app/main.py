@@ -5,6 +5,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.routers import parse
 import math
+import pandas as pd
 from bitarray import bitarray
 
 app = FastAPI()
@@ -62,23 +63,24 @@ def result(request: Request, search_word_key: str = Form(...)):
         bloom_filter = BloomFilter(200, 100)
         key_word_array = ["покупатель", "компании-супермаркета", "магазинов",
                           "номер магазина", "площадь магазина", "посетивших магазины",
-                          "продажи", "долларах", "произведенные магазинами", "покупателей"]
-        description = """В наборе данных вы получите данные о различных магазинах компании-супермаркета в соответствии 
-        с их идентификаторами магазинов, которые для простоты были преобразованы в положительные целые числа.
-        ID - Идентификационный номер магазина
-        Store_Area - физическая площадь магазина в ядрах
-        Items_Available - Количество различных предметов, доступных в соответствующем магазине.
-        DailyCustomerCount - количество покупателей, посетивших магазины в среднем за месяц.
-        Store_Sales - Продажи в (долларах США), произведенные магазинами."""
+                          "продажи", "долларах", "произведенные магазинами", "покупателей", "набор", "супермаркет"]
 
         for i in range(len(key_word_array)):
             bloom_filter.add_to_filter(key_word_array[i])
 
-        file_path = "csv/Stores.csv"
+        file_path = "csv/9.csv"
 
         if not bloom_filter.check_is_not_in_filter(search_word_key.lower()):
-            if search_word_key.lower() in description.lower():
-                return templates.TemplateResponse('main.html', context={'request': request, 'file_path': file_path})
+            dataframe = pd.read_csv("csv/df.csv", sep=",", encoding="windows-1251")
+            filenames = []
+            for i in range(dataframe.shape[0]):
+                if search_word_key.lower() in dataframe.iloc[i]['description'].lower():
+                    filenames.append((dataframe.iloc[i]['file'], dataframe.iloc[i]['link']))
+
+            if len(filenames) == 1 and filenames[0][0] == "9.csv":
+                return templates.TemplateResponse('main.html', context={'request': request, 'file_path': filenames[0][0]})
+            elif len(filenames) > 1:
+                return templates.TemplateResponse('any.html', context={'request': request, 'filenames': filenames})
             else:
                 return templates.TemplateResponse('error.html', context={'request': request})
         else:

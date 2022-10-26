@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block page_content %}
+
+<main class="container center">
+    <h1>Найдено несколько файлов</h1>
+
+    <ol>
+        {% for filename, link in filenames %}
+        <li class="labs-item"><a href="{{link}}">{{filename}}</a></li>
+        {% endfor %}
+    </ol>
+</main>
+
+{% endblock %}
