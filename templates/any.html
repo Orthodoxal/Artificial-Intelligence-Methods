@@ -3,11 +3,11 @@
 {% block page_content %}
 
 <main class="container center">
-    <h1>Найдено несколько файлов</h1>
+    <h1>Найдено:</h1>
 
     <ol>
         {% for filename, link in filenames %}
-        <li class="labs-item"><a href="{{link}}">{{filename}}</a></li>
+        <li class="labs-item" style="list-style: none"><a href="{{link}}">{{filename}}</a></li>
         {% endfor %}
     </ol>
 </main>

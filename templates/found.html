@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block page_content %}
+
+<main class="container center">
+    <h1>Ключевое слово найдено в фильтре Блума</h1>
+
+    <form action="/found" method="post">
+        <button class="btn btn-dark col-2">Поиск по структуре</button><br>
+        <input type="text" name="search_word_key" value="{{search_word_key}}" style="visibility: hidden">
+    </form>
+</main>
+
+{% endblock %}

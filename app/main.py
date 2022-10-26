@@ -60,30 +60,38 @@ async def home(request: Request):
 @app.post("/")
 def result(request: Request, search_word_key: str = Form(...)):
     try:
-        bloom_filter = BloomFilter(200, 100)
-        key_word_array = ["покупатель", "компании-супермаркета", "магазинов",
-                          "номер магазина", "площадь магазина", "посетивших магазины",
-                          "продажи", "долларах", "произведенные магазинами", "покупателей", "набор", "супермаркет"]
+        bloom_filter = BloomFilter(200, 20)
+        key_word_array = ["торгующих", "продуктовый магазин", "США",
+                          "гипермаркет", "ассортименте", "продуктовые магазины",
+                          "товаров", "напитков", "продуктов", "магазин", "набор", "супермаркет",
+                          "золото"]
 
         for i in range(len(key_word_array)):
             bloom_filter.add_to_filter(key_word_array[i])
 
-        file_path = "csv/9.csv"
+        if not bloom_filter.check_is_not_in_filter(search_word_key):
+            return templates.TemplateResponse('found.html', context={'request': request, 'search_word_key': search_word_key})
+        return templates.TemplateResponse('error.html', context={'request': request})
+    except Exception:
+        return Exception
 
-        if not bloom_filter.check_is_not_in_filter(search_word_key.lower()):
-            dataframe = pd.read_csv("csv/df.csv", sep=",", encoding="windows-1251")
-            filenames = []
-            for i in range(dataframe.shape[0]):
-                if search_word_key.lower() in dataframe.iloc[i]['description'].lower():
-                    filenames.append((dataframe.iloc[i]['file'], dataframe.iloc[i]['link']))
 
-            if len(filenames) == 1 and filenames[0][0] == "9.csv":
-                return templates.TemplateResponse('main.html', context={'request': request, 'file_path': filenames[0][0]})
-            elif len(filenames) > 1:
-                return templates.TemplateResponse('any.html', context={'request': request, 'filenames': filenames})
-            else:
-                return templates.TemplateResponse('error.html', context={'request': request})
-        else:
-            return templates.TemplateResponse('error.html', context={'request': request})
+@app.post("/found")
+def result(request: Request, search_word_key: str = Form(...)):
+    try:
+        dataframe = pd.read_csv("csv/df.csv", sep=",", encoding="windows-1251")
+        filenames = []
+        for i in range(dataframe.shape[0]):
+            if search_word_key.lower() in dataframe.iloc[i]['description'].lower():
+                filenames.append((dataframe.iloc[i]['file'], dataframe.iloc[i]['link']))
+
+        if len(filenames) == 1 and filenames[0][0] == "9.csv":
+            return templates.TemplateResponse('main.html', context={'request': request, 'file_path': filenames[0][0]})
+        elif len(filenames) >= 1:
+            names = []
+            for index in range(len(filenames)):
+                names.append(("Результат: " + filenames[index][0].replace('.csv', ''), filenames[index][1]))
+
+            return templates.TemplateResponse('any.html', context={'request': request, 'filenames': names})
     except Exception:
         return Exception
