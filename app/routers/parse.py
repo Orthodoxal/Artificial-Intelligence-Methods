@@ -11,6 +11,8 @@ import matplotlib.pyplot as plt
 from fastapi import Request, APIRouter, File, UploadFile, Form
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates/")
@@ -143,6 +145,36 @@ def parse(
         result_info = ""
         for lines in contents.readlines():
             result_info += ("<pre>" + lines + "</pre>\n")
+
+        # laba 5
+
+        dataframe = pd.read_csv("csv/" + file_path, sep=",")
+        filtered_data = dataframe.iloc[row_start:row_end + 1, column_start:column_end + 1]
+        dataframe3 = pd.DataFrame(filtered_data)
+        x = dataframe3.loc[:, ['Store_Area']]
+        y = dataframe3.loc[:, ['Store_Sales']]
+
+        x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.01)
+        model = LinearRegression().fit(x_train, y_train)
+        traing_set = round(model.score(x_train, y_train) * 100, 5)
+        test_set = round(model.score(x_test, y_test) * 100, 5)
+
+        plt.figure(figsize=(16, 9))
+        plt.scatter(x_train, y_train, color='black')
+        plt.scatter(x_test, y_test, color='red')
+        plt.xlabel('Площадь магазина (фт^2)', fontweight='bold')
+        plt.ylabel('Выручка ($)', fontweight='bold')
+        plt.ylim(0, dataframe3.Store_Sales.max())
+        plt.xlim(750, dataframe3.Store_Area.max() + 100)
+        plt.plot(x_train, model.predict(x_train), color="green", linewidth=3)
+
+        tmpfile = BytesIO()
+        plt.savefig(tmpfile, format='png')
+        encoded = base64.b64encode(tmpfile.getvalue()).decode('utf-8')
+        plotx = '<img class="img" src=\'data:image/png;base64,{}\'>'.format(encoded)
+
+
+
     except Exception:
         return {"message": "There was an error uploading the file"}
     return templates.TemplateResponse('csv.html',
@@ -166,5 +198,10 @@ def parse(
                                               index_names=False, escape=False),
                                           'store_sales_grouped_by_daily_customer_count': store_sales_grouped_by_daily_customer_count.to_html(
                                               index_names=False, escape=False),
-                                          'plot': fig_list
+                                          'plot': fig_list,
+                                          'traing_set': traing_set,
+                                          'test_set': test_set,
+                                          'plotx': plotx,
+                                          'x_train': x_train,
+                                          'x_test': x_test
                                       })
