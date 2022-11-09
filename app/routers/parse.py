@@ -22,6 +22,60 @@ def group_by_min_max_mean(dataframe, min, max, rangemm, column, groupedByColumn)
     return dataframe.groupby(pd.cut(dataframe[column], np.arange(min, max + rangemm, rangemm)))[groupedByColumn].agg(['min', 'max', 'mean'])
 
 
+def linear_regression(self, x_pred, new_df_in):
+    new_df = self.df.iloc[:self.k]
+    y = []
+    x = []
+    for data_y in new_df['trtbps']:
+        y.append(data_y)
+    for data_x in new_df['fbs']:
+        x.append(data_x)
+
+    # Сумма х и у
+    sum_x = np.array(x).sum()
+    sum_y = np.array(y).sum()
+    # Сумма произведений х и у
+    sum_xy = 0
+    index = 0
+    for xx in x:
+        sum_xy += xx * y[index]
+        index += 1
+    # Сумма квадратов x и у
+    sum_kv = 0
+    for xx in x:
+        sum_kv += xx ** 2
+    sum_kv_y = 0
+    for yy in y:
+        sum_kv += yy ** 2
+    # Средние значения
+    av_x = sum_x / np.array(x).size
+    av_y = sum_y / np.array(y).size
+    av_xy = sum_xy / np.array(x).size
+
+    b = (np.array(x).size * sum_xy - sum_x * sum_y) / (np.array(x).size * sum_kv - sum_x ** 2)
+    a = (sum_y - b * sum_x) / np.array(x).size
+
+    dx = smp.sqrt((sum_kv / np.array(x).size) - (av_x ** 2))
+    dy = smp.sqrt((sum_kv_y / np.array(x).size) - (av_y ** 2))
+    r_kv = ((av_xy - av_x * av_y) / (dx * dy)) ** 2
+
+    fact_y = []
+    for yy in new_df_in['trtbps']:
+        fact_y.append(yy)
+    fact_y = np.array(fact_y)
+
+    for_table = ""
+    count = 0
+    for xx in x_pred:
+        for_table += "<tr>"
+        for_table += "<td>%s</td>" % xx[0]
+        for_table += "<td>%s</td>" % (a * xx[0] + b)
+        for_table += "<td>%s</td>" % fact_y[count]
+        count += 1
+        for_table += "</tr>"
+    return for_table + "<br><h3>Коэффициент детерминации: %s</h3><br>" % -r_kv
+
+
 @router.post("/parse", response_class=HTMLResponse)
 def parse(
         request: Request,
@@ -155,9 +209,28 @@ def parse(
         y = dataframe3.loc[:, ['Store_Sales']]
 
         x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.01)
-        model = LinearRegression().fit(x_train, y_train)
-        traing_set = round(model.score(x_train, y_train) * 100, 5)
-        test_set = round(model.score(x_test, y_test) * 100, 5)
+
+        x_train_99 = np.array(x_train)
+        y_train_99 = np.array(y_train)
+        size_data = np.size(x_train_99)
+        # среднее арифметическое
+        mean_x = np.mean(x_train_99)
+        mean_y = np.mean(y_train_99)
+        # сумма перекрестных отклонений y и x
+        SS_xy = np.sum(y_train_99 * x_train_99) - size_data * mean_y * mean_x
+        # сумма квадратов отклонений от x
+        SS_xx = np.sum(x_train_99 * x_train_99) - size_data * mean_x * mean_x
+
+        b = SS_xy / SS_xx
+        a = mean_y - b * mean_x
+
+        x_test_1 = np.array(x_test)
+        y_test_1 = np.array(y_test)
+        pred_y = a + b * x_test_1
+
+        u = ((y_test_1 - pred_y) ** 2).sum()
+        v = ((y_test_1 - y_test_1.mean()) ** 2).sum()
+        R2 = 1 - u / v
 
         plt.figure(figsize=(16, 9))
         plt.scatter(x_train, y_train, color='black')
@@ -166,7 +239,9 @@ def parse(
         plt.ylabel('Выручка ($)', fontweight='bold')
         plt.ylim(0, dataframe3.Store_Sales.max())
         plt.xlim(750, dataframe3.Store_Area.max() + 100)
-        plt.plot(x_train, model.predict(x_train), color="green", linewidth=3)
+        y_pred = a + b * x_train
+        plt.plot(x_train, y_pred, color="green", linewidth=3)
+        # plt.plot(x_train, model.predict(x_train), color="green", linewidth=3)
 
         tmpfile = BytesIO()
         plt.savefig(tmpfile, format='png')
@@ -199,8 +274,7 @@ def parse(
                                           'store_sales_grouped_by_daily_customer_count': store_sales_grouped_by_daily_customer_count.to_html(
                                               index_names=False, escape=False),
                                           'plot': fig_list,
-                                          'traing_set': traing_set,
-                                          'test_set': test_set,
+                                          'R2': R2,
                                           'plotx': plotx,
                                           'x_train': x_train,
                                           'x_test': x_test
