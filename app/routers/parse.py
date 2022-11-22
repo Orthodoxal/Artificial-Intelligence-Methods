@@ -22,60 +22,6 @@ def group_by_min_max_mean(dataframe, min, max, rangemm, column, groupedByColumn)
     return dataframe.groupby(pd.cut(dataframe[column], np.arange(min, max + rangemm, rangemm)))[groupedByColumn].agg(['min', 'max', 'mean'])
 
 
-def linear_regression(self, x_pred, new_df_in):
-    new_df = self.df.iloc[:self.k]
-    y = []
-    x = []
-    for data_y in new_df['trtbps']:
-        y.append(data_y)
-    for data_x in new_df['fbs']:
-        x.append(data_x)
-
-    # Сумма х и у
-    sum_x = np.array(x).sum()
-    sum_y = np.array(y).sum()
-    # Сумма произведений х и у
-    sum_xy = 0
-    index = 0
-    for xx in x:
-        sum_xy += xx * y[index]
-        index += 1
-    # Сумма квадратов x и у
-    sum_kv = 0
-    for xx in x:
-        sum_kv += xx ** 2
-    sum_kv_y = 0
-    for yy in y:
-        sum_kv += yy ** 2
-    # Средние значения
-    av_x = sum_x / np.array(x).size
-    av_y = sum_y / np.array(y).size
-    av_xy = sum_xy / np.array(x).size
-
-    b = (np.array(x).size * sum_xy - sum_x * sum_y) / (np.array(x).size * sum_kv - sum_x ** 2)
-    a = (sum_y - b * sum_x) / np.array(x).size
-
-    dx = smp.sqrt((sum_kv / np.array(x).size) - (av_x ** 2))
-    dy = smp.sqrt((sum_kv_y / np.array(x).size) - (av_y ** 2))
-    r_kv = ((av_xy - av_x * av_y) / (dx * dy)) ** 2
-
-    fact_y = []
-    for yy in new_df_in['trtbps']:
-        fact_y.append(yy)
-    fact_y = np.array(fact_y)
-
-    for_table = ""
-    count = 0
-    for xx in x_pred:
-        for_table += "<tr>"
-        for_table += "<td>%s</td>" % xx[0]
-        for_table += "<td>%s</td>" % (a * xx[0] + b)
-        for_table += "<td>%s</td>" % fact_y[count]
-        count += 1
-        for_table += "</tr>"
-    return for_table + "<br><h3>Коэффициент детерминации: %s</h3><br>" % -r_kv
-
-
 @router.post("/parse", response_class=HTMLResponse)
 def parse(
         request: Request,
