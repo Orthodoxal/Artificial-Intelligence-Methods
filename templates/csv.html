@@ -60,6 +60,16 @@
     <p>Test</p>
     {{x_test|safe}}
 
+    <H3>Дерево решений</H3>
+    <p>Реальные</p>
+    {{y_test|safe}}
+    <p>Предугаданные</p>
+    {{predicted|safe}}
+    <p>Предугаданные (библиотека)</p>
+    {{predicted2|safe}}
+    <p>Оценка R^2 score: {{ R2T }}</p>
+    <p>Оценка R^2 score (библиотека): {{ R2TLib }}</p>
+
     <H3>Информация о данных</H3>
     {{ result_info|safe }}
 </main>

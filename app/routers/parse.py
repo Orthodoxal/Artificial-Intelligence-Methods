@@ -13,6 +13,8 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
+from sklearn.tree import DecisionTreeRegressor
+from sklearn import metrics
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates/")
@@ -31,7 +33,7 @@ class Node:
 
 
 class DecisionTree:
-    def __init__(self, max_depth=20, min_samples=10):
+    def __init__(self, max_depth=20, min_samples=5):
         self.max_depth = max_depth
         self.min_samples = min_samples
         self.tree = []
@@ -47,7 +49,6 @@ class DecisionTree:
 
     def entropy(self, y):
         predict = np.sum(y) / len(y)
-        mse = np.sum((predict - y) ** 2) / len(y)
         mae = np.sum(np.abs(predict - y)) / len(y)
         return mae
 
@@ -290,24 +291,31 @@ def parse(
         # laba 6
 
         x = dataframe3.loc[:, ['Store_Area', 'Daily_Customer_Count']]
+        # x = dataframe3.loc[:, ['Store_Area']]
         y = dataframe3.loc[:, ['Store_Sales']]
 
-        x1_train, x1_test, y_train, y_test = train_test_split(np.array(x), np.array(y), test_size=0.1)
-        clf = DecisionTree()
-        clf.fit(x1_train, y_train)
+        X_train, X_test, y_train, y_test = train_test_split(np.array(x), np.array(y), test_size=0.005)
+        clf = DecisionTree(30, 5)
+        clf.fit(X_train, y_train)
 
-        predicted = clf.predict(x1_test)
+        predicted = clf.predict(X_test)
         print(predicted)
         print("////")
         print(y_test)
         print("////")
         u = ((predicted - y_test)**2).sum()
         v = ((y_test.mean() - y_test)**2).sum()
-        R2 = 1 - u / v
+        R2T = 1 - u / v
         print(R2)
 
-
-
+        # lib
+        regressor = DecisionTreeRegressor()
+        regressor.fit(X_train, y_train)
+        predicted2 = regressor.predict(X_test)
+        u = ((predicted2 - y_test) ** 2).sum()
+        v = ((y_test.mean() - y_test) ** 2).sum()
+        R2TLib = 1 - u / v
+        print(R2)
 
     except Exception:
         return {"message": "There was an error uploading the file"}
@@ -336,5 +344,10 @@ def parse(
                                           'R2': R2,
                                           'plotx': plotx,
                                           'x_train': x_train,
-                                          'x_test': x_test
+                                          'x_test': x_test,
+                                          'predicted': predicted,
+                                          'predicted2': predicted2,
+                                          'y_test': y_test,
+                                          'R2T': R2T,
+                                          'R2TLib': R2TLib
                                       })
