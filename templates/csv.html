@@ -70,6 +70,8 @@
     <p>Оценка R^2 score: {{ R2T }}</p>
     <p>Оценка R^2 score (библиотека): {{ R2TLib }}</p>
 
+    {{encoded|safe}}
+
     <H3>Информация о данных</H3>
     {{ result_info|safe }}
 </main>

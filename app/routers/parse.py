@@ -1,5 +1,7 @@
 import base64
+import copy
 import math
+import random
 import sys
 from io import BytesIO
 
@@ -13,11 +15,69 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import StandardScaler
 from sklearn.tree import DecisionTreeRegressor
 from sklearn import metrics
+import seaborn as sns
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates/")
+
+
+def euclidean(point, data):
+    return np.sqrt(np.sum((point - data) ** 2, axis=1))
+
+
+class Clustering_KMeans:
+
+    def __init__(self, n_clusters=8, max_iter=300):
+        self.n_clusters = n_clusters
+        self.max_iter = max_iter
+
+    # Инициализия центроидов при помощи метода "k-means++"
+    def fit(self, X_train):
+        # Первого центроид = случайная точка из тренировочных данных
+        self.centroids = [random.choice(X_train)]
+        # Остальные инициализируются с вероятностями, пропорциональными их расстояниям до первого
+        for _ in range(self.n_clusters - 1):
+            # Вычисление расстояния от точек до центроидов
+            dists = np.sum([euclidean(centroid, X_train) for centroid in self.centroids], axis=0)
+            # Нормализация расстояния
+            dists /= np.sum(dists)
+            # Выбор оставшихся точек на основании их расстояний
+            new_centroid_idx, = np.random.choice(range(len(X_train)), size=1, p=dists)
+            self.centroids += [X_train[new_centroid_idx]]
+
+        # Повторение для корректировки центроидов до их схождения или до прохождения max_iter
+        iteration = 0
+        prev_centroids = None
+        while np.not_equal(self.centroids, prev_centroids).any() and iteration < self.max_iter:
+            # Sort each datapoint, assigning to nearest centroid
+            # Сортировка каждой точки данных + присвоение ближайшему центроиду
+            sorted_points = [[] for _ in range(self.n_clusters)]
+            for x in X_train:
+                dists = euclidean(x, self.centroids)
+                centroid_idx = np.argmin(dists)
+                sorted_points[centroid_idx].append(x)
+            # Push current centroids to previous, reassign centroids as mean of the points belonging to them
+            # Перенос текущих центроидов на предыдущие, переназначение центроидов как среднее значение принадлежащих им точек
+            prev_centroids = self.centroids
+            self.centroids = [np.median(cluster, axis=0) for cluster in sorted_points]
+            for i, centroid in enumerate(self.centroids):
+                if np.isnan(
+                        centroid).any():  # Поиск любых np.nans, полученных в результате центроида, не имеющего точек
+                    self.centroids[i] = prev_centroids[i]
+            iteration += 1
+
+    def evaluate(self, X):
+        centroids = []
+        centroid_idxs = []
+        for x in X:
+            dists = euclidean(x, self.centroids)
+            centroid_idx = np.argmin(dists)
+            centroids.append(self.centroids[centroid_idx])
+            centroid_idxs.append(centroid_idx)
+        return centroids, centroid_idxs
 
 
 class Node:
@@ -113,7 +173,8 @@ class DecisionTree:
 
 
 def group_by_min_max_mean(dataframe, min, max, rangemm, column, groupedByColumn):
-    return dataframe.groupby(pd.cut(dataframe[column], np.arange(min, max + rangemm, rangemm)))[groupedByColumn].agg(['min', 'max', 'mean'])
+    return dataframe.groupby(pd.cut(dataframe[column], np.arange(min, max + rangemm, rangemm)))[groupedByColumn].agg(
+        ['min', 'max', 'mean'])
 
 
 @router.post("/parse", response_class=HTMLResponse)
@@ -214,9 +275,9 @@ def parse(
         range_store_area = (max - min) / amount_group
         df4 = dataframe2[(dataframe2["Store_Area"] <= min + range_store_area)]['Daily_Customer_Count']
         df5 = dataframe2[(dataframe2["Store_Area"] > min + range_store_area) & (
-                    dataframe2["Store_Area"] <= min + range_store_area * 2)]['Daily_Customer_Count']
+                dataframe2["Store_Area"] <= min + range_store_area * 2)]['Daily_Customer_Count']
         df6 = dataframe2[(dataframe2["Store_Area"] > min + range_store_area * 2) & (
-                    dataframe2["Store_Area"] <= min + range_store_area * 3)]['Daily_Customer_Count']
+                dataframe2["Store_Area"] <= min + range_store_area * 3)]['Daily_Customer_Count']
 
         fig = plt.figure()
         fig.set_size_inches(12, 10)
@@ -239,6 +300,9 @@ def parse(
         result_info = ""
         for lines in contents.readlines():
             result_info += ("<pre>" + lines + "</pre>\n")
+
+
+
 
         # laba 5
 
@@ -303,8 +367,8 @@ def parse(
         print("////")
         print(y_test)
         print("////")
-        u = ((predicted - y_test)**2).sum()
-        v = ((y_test.mean() - y_test)**2).sum()
+        u = ((predicted - y_test) ** 2).sum()
+        v = ((y_test.mean() - y_test) ** 2).sum()
         R2T = 1 - u / v
         print(R2)
 
@@ -316,6 +380,35 @@ def parse(
         v = ((y_test.mean() - y_test) ** 2).sum()
         R2TLib = 1 - u / v
         print(R2)
+
+        # lab 7
+        X_train = dataframe2[['Store_Sales', 'Store_Area']].iloc[row_start:row_end].copy()
+        X_train = StandardScaler().fit_transform(X_train)
+
+        clustering = Clustering_KMeans(n_clusters=5)
+        clustering.fit(X_train)
+
+        class_centers, classification = clustering.evaluate(X_train)
+
+        plt.clf()
+        sns.scatterplot(x=[X[0] for X in X_train],
+                        y=[X[1] for X in X_train],
+                        hue=classification,
+                        style=classification,
+                        palette="deep",
+                        legend=None
+                        )
+        plt.plot([x for x, _ in clustering.centroids],
+                 [y for _, y in clustering.centroids],
+                 'k+', markersize=10)
+        plt.xlabel("Store_Sales")
+        plt.ylabel("Store_Area")
+        plt.title("Кластеризация")
+
+        tmpfile = BytesIO()
+        plt.savefig(tmpfile, format='png')
+        encoded = base64.b64encode(tmpfile.getvalue()).decode('utf-8')
+        ploty = '<img class="img" src=\'data:image/png;base64,{}\'>'.format(encoded)
 
     except Exception:
         return {"message": "There was an error uploading the file"}
@@ -349,5 +442,6 @@ def parse(
                                           'predicted2': predicted2,
                                           'y_test': y_test,
                                           'R2T': R2T,
-                                          'R2TLib': R2TLib
+                                          'R2TLib': R2TLib,
+                                          'encoded': ploty
                                       })
