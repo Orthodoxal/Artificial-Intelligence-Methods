@@ -24,60 +24,27 @@ router = APIRouter()
 templates = Jinja2Templates(directory="templates/")
 
 
-def euclidean(point, data):
-    return np.sqrt(np.sum((point - data) ** 2, axis=1))
+def random_centroids(data, k):
+    centroids = []
+
+    for i in range(k):
+        # Рандомные значения по каждому столбцу
+        centroid = data.apply(lambda x: float(x.sample()))
+        centroids.append(centroid)
+
+    return pd.concat(centroids, axis=1)
 
 
-class Clustering_KMeans:
+def get_labels(data, centroids):
+    # Для каждого столбца считаем расстояние до каждого центроида
+    distances = centroids.apply(lambda x: np.sqrt(((data - x) ** 2).sum(axis=1)))
+    return distances.idxmin(axis=1)
 
-    def __init__(self, n_clusters=8, max_iter=300):
-        self.n_clusters = n_clusters
-        self.max_iter = max_iter
 
-    # Инициализия центроидов при помощи метода "k-means++"
-    def fit(self, X_train):
-        # Первого центроид = случайная точка из тренировочных данных
-        self.centroids = [random.choice(X_train)]
-        # Остальные инициализируются с вероятностями, пропорциональными их расстояниям до первого
-        for _ in range(self.n_clusters - 1):
-            # Вычисление расстояния от точек до центроидов
-            dists = np.sum([euclidean(centroid, X_train) for centroid in self.centroids], axis=0)
-            # Нормализация расстояния
-            dists /= np.sum(dists)
-            # Выбор оставшихся точек на основании их расстояний
-            new_centroid_idx, = np.random.choice(range(len(X_train)), size=1, p=dists)
-            self.centroids += [X_train[new_centroid_idx]]
-
-        # Повторение для корректировки центроидов до их схождения или до прохождения max_iter
-        iteration = 0
-        prev_centroids = None
-        while np.not_equal(self.centroids, prev_centroids).any() and iteration < self.max_iter:
-            # Sort each datapoint, assigning to nearest centroid
-            # Сортировка каждой точки данных + присвоение ближайшему центроиду
-            sorted_points = [[] for _ in range(self.n_clusters)]
-            for x in X_train:
-                dists = euclidean(x, self.centroids)
-                centroid_idx = np.argmin(dists)
-                sorted_points[centroid_idx].append(x)
-            # Push current centroids to previous, reassign centroids as mean of the points belonging to them
-            # Перенос текущих центроидов на предыдущие, переназначение центроидов как среднее значение принадлежащих им точек
-            prev_centroids = self.centroids
-            self.centroids = [np.median(cluster, axis=0) for cluster in sorted_points]
-            for i, centroid in enumerate(self.centroids):
-                if np.isnan(
-                        centroid).any():  # Поиск любых np.nans, полученных в результате центроида, не имеющего точек
-                    self.centroids[i] = prev_centroids[i]
-            iteration += 1
-
-    def evaluate(self, X):
-        centroids = []
-        centroid_idxs = []
-        for x in X:
-            dists = euclidean(x, self.centroids)
-            centroid_idx = np.argmin(dists)
-            centroids.append(self.centroids[centroid_idx])
-            centroid_idxs.append(centroid_idx)
-        return centroids, centroid_idxs
+def new_centroids(data, labels):
+    # Группируем наши изначальные данные по кластерам и затем считаем средние геометрические значения
+    centroids = data.groupby(labels).apply(lambda x: np.exp(np.log(x).mean())).T
+    return centroids
 
 
 class Node:
@@ -301,9 +268,6 @@ def parse(
         for lines in contents.readlines():
             result_info += ("<pre>" + lines + "</pre>\n")
 
-
-
-
         # laba 5
 
         dataframe = pd.read_csv("csv/" + file_path, sep=",")
@@ -382,28 +346,119 @@ def parse(
         print(R2)
 
         # lab 7
-        X_train = dataframe2[['Store_Sales', 'Store_Area']].iloc[row_start:row_end].copy()
-        X_train = StandardScaler().fit_transform(X_train)
 
-        clustering = Clustering_KMeans(n_clusters=5)
-        clustering.fit(X_train)
+        data = dataframe2[['Store_Sales', 'Store_Area']].iloc[row_start:row_end].copy()
+        # data = ((data - data.min()) / (data.max() - data.min())) * 9 + 1
 
-        class_centers, classification = clustering.evaluate(X_train)
+        max_iterations = 100
+        centroid_count = 3
 
-        plt.clf()
-        sns.scatterplot(x=[X[0] for X in X_train],
-                        y=[X[1] for X in X_train],
-                        hue=classification,
-                        style=classification,
-                        palette="deep",
-                        legend=None
-                        )
-        plt.plot([x for x, _ in clustering.centroids],
-                 [y for _, y in clustering.centroids],
-                 'k+', markersize=10)
-        plt.xlabel("Store_Sales")
-        plt.ylabel("Store_Area")
-        plt.title("Кластеризация")
+        centroids = random_centroids(data, centroid_count)
+        old_centroids = pd.DataFrame()
+
+        iteration = 1
+        while iteration < max_iterations and not centroids.equals(old_centroids):
+            old_centroids = centroids
+            labels = get_labels(data, centroids)
+            centroids = new_centroids(data, labels)
+            iteration += 1
+
+        # plot_clusters(data, labels, centroids, iteration)
+
+        plt.figure(figsize=(16, 9))
+        plt.scatter(data.to_numpy()[labels == 0, 0], data.to_numpy()[labels == 0, 1], s=5, c='orange',
+                    label='1')
+        plt.scatter(data.to_numpy()[labels == 1, 0], data.to_numpy()[labels == 1, 1], s=5, c='blue', label='2')
+        plt.scatter(data.to_numpy()[labels == 2, 0], data.to_numpy()[labels == 2, 1], s=5, c='green', label='3')
+        plt.scatter(centroids.T.to_numpy()[:, 0], centroids.T.to_numpy()[:, 1], s=30, c='black', label='Центроиды кластеров')
+        plt.xlabel('Store_Sales')
+        plt.ylabel('Store_Area')
+        plt.legend()
+
+        a = data.to_numpy()[labels == 0, 0], data.to_numpy()[labels == 0, 1]
+        b = data.to_numpy()[labels == 1, 0], data.to_numpy()[labels == 1, 1]
+        c = data.to_numpy()[labels == 2, 0], data.to_numpy()[labels == 2, 1]
+
+        print(data)
+
+        # distance = 0
+        # for i in a:
+        #     distance += euclidean(i, a)
+
+        distanceA = 0
+        for i in range(len(a[0])):
+            x1 = a[0][i]
+            y1 = a[1][i]
+            for j in range(len(a[0])):
+                x2 = a[0][j]
+                y2 = a[1][j]
+                distanceA += (((x1 - x2) ** 2 + (y1 - y2) ** 2) ** 0.5)
+
+        distanceAOther = 0
+        for i in range(len(a[0])):
+            x1 = a[0][i]
+            y1 = a[1][i]
+            for j in range(len(b[0])):
+                x2 = b[0][j]
+                y2 = b[1][j]
+                distanceAOther += (((x1 - x2) ** 2 + (y1 - y2) ** 2) ** 0.5)
+            for j in range(len(c[0])):
+                x2 = c[0][j]
+                y2 = c[1][j]
+                distanceAOther += (((x1 - x2) ** 2 + (y1 - y2) ** 2) ** 0.5)
+
+        distanceB = 0
+        for i in range(len(b[0])):
+            x1 = b[0][i]
+            y1 = b[1][i]
+            for j in range(len(b[0])):
+                x2 = b[0][j]
+                y2 = b[1][j]
+                distanceB += (((x1 - x2) ** 2 + (y1 - y2) ** 2) ** 0.5)
+        distanceBOther = 0
+        for i in range(len(b[0])):
+            x1 = b[0][i]
+            y1 = b[1][i]
+            for j in range(len(a[0])):
+                x2 = a[0][j]
+                y2 = a[1][j]
+                distanceBOther += (((x1 - x2) ** 2 + (y1 - y2) ** 2) ** 0.5)
+            for j in range(len(c[0])):
+                x2 = c[0][j]
+                y2 = c[1][j]
+                distanceBOther += (((x1 - x2) ** 2 + (y1 - y2) ** 2) ** 0.5)
+
+        distanceC = 0
+        for i in range(len(c[0])):
+            x1 = c[0][i]
+            y1 = c[1][i]
+            for j in range(len(c[0])):
+                x2 = c[0][j]
+                y2 = c[1][j]
+                distanceC += (((x1 - x2) ** 2 + (y1 - y2) ** 2) ** 0.5)
+
+        distanceCOther = 0
+        for i in range(len(c[0])):
+            x1 = c[0][i]
+            y1 = c[1][i]
+            for j in range(len(a[0])):
+                x2 = a[0][j]
+                y2 = a[1][j]
+                distanceCOther += (((x1 - x2) ** 2 + (y1 - y2) ** 2) ** 0.5)
+            for j in range(len(b[0])):
+                x2 = b[0][j]
+                y2 = b[1][j]
+                distanceCOther += (((x1 - x2) ** 2 + (y1 - y2) ** 2) ** 0.5)
+
+        print('---')
+        print('---')
+        print('---')
+        print('1 кластер')
+        print(distanceAOther / distanceA)
+        print('2 кластер')
+        print(distanceBOther / distanceB)
+        print('3 кластер')
+        print(distanceCOther / distanceC)
 
         tmpfile = BytesIO()
         plt.savefig(tmpfile, format='png')
